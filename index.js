@@ -13,64 +13,64 @@ const PORT = process.env.PORT || 8000;
 app.use(express.json());
 
 
-router.get('/', async (req, res) => {
-  try {
-    const email = req.session?.user?.email; 
-    //what ever method is being used to recog the logged in ambass.change..
+// router.get('/', async (req, res) => {
+//   try {
+//     const email = req.session?.user?.email; 
+//     //what ever method is being used to recog the logged in ambass.change..
     
 
-    let responseData = {
-      currentUser: null,
-      topUsers: [],
-    };
+//     let responseData = {
+//       currentUser: null,
+//       topUsers: [],
+//     };
 
     
-    const topUsers = await prisma.user.findMany({
-      orderBy: {
-        points: 'desc', // Order by points in descending order
-      },
-      take: 3,
-      select: {
-        name: true,
-        points: true,
-      },
-    });
+//     const topUsers = await prisma.user.findMany({
+//       orderBy: {
+//         points: 'desc', // Order by points in descending order
+//       },
+//       take: 3,
+//       select: {
+//         name: true,
+//         points: true,
+//       },
+//     });
 
     
-    if (email) {
-      const userData = await prisma.user.findUnique({
-        where: { email: email }, // find user by email
-        select: {
-          id: true,
-          name: true,
-          collegeName: true,
-          collegeYear: true,
-          phone: true,
-          points: true,
-          tasks: true, 
-        },
-      });
+//     if (email) {
+//       const userData = await prisma.user.findUnique({
+//         where: { email: email }, // find user by email
+//         select: {
+//           id: true,
+//           name: true,
+//           collegeName: true,
+//           collegeYear: true,
+//           phone: true,
+//           points: true,
+//           tasks: true, 
+//         },
+//       });
 
      
-      if (userData) {
-        responseData.currentUser = userData;
-      } else {
-        return res.status(404).json({ error: 'User not found' });
-      }
-    } else {
-      return res.status(400).json({ error: 'User email not found in session' });
-    }
+//       if (userData) {
+//         responseData.currentUser = userData;
+//       } else {
+//         return res.status(404).json({ error: 'User not found' });
+//       }
+//     } else {
+//       return res.status(400).json({ error: 'User email not found in session' });
+//     }
 
-    // top three users
-    responseData.topUsers = topUsers;
+//     // top three users
+//     responseData.topUsers = topUsers;
 
-    // combined response
-    res.status(200).json(responseData);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while fetching user data' });
-  }
-});
+//     // combined response
+//     res.status(200).json(responseData);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: 'An error occurred while fetching user data' });
+//   }
+// });
 
  
 router.post('/update', async (req, res) => {
