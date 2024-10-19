@@ -7,6 +7,15 @@ const app = express();
 
 
 
+// Enable CORS for all routes
+app.use(cors());
+// app.use(cors({
+//   origin: 'https://ecell-website-new-eight.vercel.app',
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// }));
+
+
 
 dotenv.config(); 
 const PORT = process.env.PORT || 8000;
