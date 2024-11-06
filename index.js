@@ -8,18 +8,24 @@ const app = express();
 
 const cors = require('cors');
 // Enable CORS for all routes
-app.use(cors());
-// app.use(cors({
-//   origin: 'https://ecell-website-new-eight.vercel.app',
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
+app.use(cors({
+  origin: 'https://ecell-website-new-eight.vercel.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 
 
 dotenv.config(); 
 const PORT = process.env.PORT || 8000;
 app.use(express.json());
+
+// router.post('/submit',async (req, res)=>{
+  
+// });
+// router.post('/edit',async (req, res)=>{
+  
+// });
 
 
 // router.get('/', async (req, res) => {
@@ -81,7 +87,7 @@ app.use(express.json());
 //   }
 // });
 
- 
+
 router.post('/update', async (req, res) => {
     const { id, name, collegeName, collegeYear, phone } = req.body;
 
@@ -150,6 +156,10 @@ router.post('/register', async (req, res) => {
     console.error('Error adding user:', error);
     res.status(500).json({ error: 'Unable to add user' });
   }
+});
+
+router.get('/ping', (req, res) => {
+  res.status(200).json({ message: 'Server is alive' });
 });
 
 // Use the defined routes

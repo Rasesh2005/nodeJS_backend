@@ -34,6 +34,7 @@ model User {
   hours             String      
   contribution      String
   motivation        String
+  formFilled        Boolean   @default(false)
   points            Int      @default(0) 
   tasks             Task[]   
 }
@@ -44,5 +45,6 @@ model Task {
   completed Boolean
   lastDate  DateTime
   userId    Int
+  submissionLink String @default("")
   user      User     @relation(fields: [userId], references: [id])
 }
