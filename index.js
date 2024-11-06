@@ -9,7 +9,7 @@ const app = express();
 const cors = require('cors');
 // Enable CORS for all routes
 app.use(cors({
-  origin: 'https://ecell-website-new-eight.vercel.app',
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
