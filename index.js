@@ -125,6 +125,17 @@ router.post('/register', async (req, res) => {
   } = req.body;
 
   try {
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        email: email
+      }
+    });
+    if (existingUser) {
+      console.log("user found")
+      return res.status(400).json({ error: 'User with this email already registered', user: existingUser });
+    }
+
     const newUser = await prisma.user.create({
       data: {
         name,
@@ -146,7 +157,7 @@ router.post('/register', async (req, res) => {
       }
     });
 
-    res.status(201).json({ message: 'User successfully added', user: newUser });
+    res.status(201).json({ message: 'User successfully registered!', user: newUser });
   } catch (error) {
     console.error('Error adding user:', error);
     res.status(500).json({ error: 'Unable to add user' });
