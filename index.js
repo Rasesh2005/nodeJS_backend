@@ -133,7 +133,7 @@ router.post('/register', async (req, res) => {
     });
     if (existingUser) {
       console.log("user found")
-      return res.status(400).json({ error: 'User with this email already registered', user: existingUser });
+      return res.status(400).json({ error: 'You have already submitted the form', user: existingUser });
     }
 
     const newUser = await prisma.user.create({
