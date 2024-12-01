@@ -35,16 +35,16 @@ app.use(express.json());
 //     };
 
     
-//     const topUsers = await prisma.user.findMany({
-//       orderBy: {
-//         points: 'desc', // Order by points in descending order
-//       },
-//       take: 3,
-//       select: {
-//         name: true,
-//         points: true,
-//       },
-//     });
+    // const topUsers = await prisma.user.findMany({
+    //   orderBy: {
+    //     points: 'desc', // Order by points in descending order
+    //   },
+    //   take: 3,
+    //   select: {
+    //     name: true,
+    //     points: true,
+    //   },
+    // });
 
     
 //     if (email) {
@@ -75,12 +75,33 @@ app.use(express.json());
 //     responseData.topUsers = topUsers;
 
 //     // combined response
-//     res.status(200).json(responseData);
+    // res.status(200).json(responseData);
 //   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: 'An error occurred while fetching user data' });
+    // console.error(error);
+    // res.status(500).json({ error: 'An error occurred while fetching user data' });
 //   }
 // });
+
+
+router.get('/campusambassador', async (req, res) => {
+  try {
+    const topUsers = await prisma.user.findMany({
+      orderBy: {
+        points: 'desc', 
+      },
+      take: 10,
+      select: {
+        name: true,
+        points: true,
+        collegeName:true,
+      },
+    });
+    res.status(200).json(topUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while fetching top user data' });
+  }
+});
 
 
 router.post('/update', async (req, res) => {
