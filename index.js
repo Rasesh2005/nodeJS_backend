@@ -103,7 +103,69 @@ router.get('/campusambassador', async (req, res) => {
   }
 });
 
+router.get('/user', async (req, res) => {
+  const { email } = req.query; // Extract email from query parameters
 
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    const userData = await prisma.user.findUnique({
+      where: { email: email }, // Find user by email
+      select: {
+        id: true,
+        name: true,
+        collegeName: true,
+        collegeYear: true,
+        phone: true,
+        points: true,
+        tasks: true,
+        // Add any other fields you want to include in the response
+      },
+    });
+
+    if (userData) {
+      return res.status(200).json(userData); // Return user data if found
+    } else {
+      return res.status(404).json({ error: 'User  not found' }); // User not found
+    }
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    res.status(500).json({ error: 'An error occurred while fetching user data' });
+  }
+});router.get('/user', async (req, res) => {
+  const { email } = req.query; // Extract email from query parameters
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    const userData = await prisma.user.findUnique({
+      where: { email: email }, // Find user by email
+      select: {
+        id: true,
+        name: true,
+        collegeName: true,
+        collegeYear: true,
+        program: true,
+        phone: true,
+        email:true,
+        points: true
+      },
+    });
+
+    if (userData) {
+      return res.status(200).json(userData); // Return user data if found
+    } else {
+      return res.status(404).json({ error: 'User  not found' }); // User not found
+    }
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    res.status(500).json({ error: 'An error occurred while fetching user data' });
+  }
+});
 router.post('/update', async (req, res) => {
     const { id, name, collegeName, collegeYear, phone } = req.body;
 
