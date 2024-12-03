@@ -203,7 +203,7 @@ router.post('/submit', async (req, res) => {
       },
       data: {
         submission: submission,
-        submitted:true 
+        submitted:true,
       },
     });
 
