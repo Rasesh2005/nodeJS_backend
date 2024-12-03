@@ -48,18 +48,18 @@ app.use(express.json());
 
     
 //     if (email) {
-//       const userData = await prisma.user.findUnique({
-//         where: { email: email }, // find user by email
-//         select: {
-//           id: true,
-//           name: true,
-//           collegeName: true,
-//           collegeYear: true,
-//           phone: true,
-//           points: true,
-//           tasks: true, 
-//         },
-//       });
+      // const userData = await prisma.user.findUnique({
+      //   where: { email: email }, // find user by email
+      //   select: {
+      //     id: true,
+      //     name: true,
+      //     collegeName: true,
+      //     collegeYear: true,
+      //     phone: true,
+      //     points: true,
+      //     tasks: true, 
+      //   },
+      // });
 
      
 //       if (userData) {
@@ -83,6 +83,34 @@ app.use(express.json());
 // });
 
 
+
+//profile userdata
+router.get('/campusambassador', async(req,res)=>{
+  const userEmail = req.user?.email; 
+  try{
+    const userData = await prisma.user.findUnique({
+      where: { email: userEmail }, 
+      select: {
+        id: true,
+        name: true,
+        collegeName: true,
+        collegeYear: true,
+        phone: true,
+        points: true,
+        tasks: true, 
+      },
+    });
+    res.status(200).json(userData);
+
+  }catch(error){
+    console.error(error);
+    res.status(500).json({ error: 'could not fetch user data' });
+
+  }
+});
+
+
+//leaderboard top 10
 router.get('/campusambassador', async (req, res) => {
   try {
     const topUsers = await prisma.user.findMany({
@@ -102,6 +130,96 @@ router.get('/campusambassador', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while fetching top user data' });
   }
 });
+
+
+//tasks section data 
+router.get('/campusambassador', async (req, res) => {
+  const userId = req.user?.id;  
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized: User not logged in' });
+  }
+
+  try {
+    const tasks = await prisma.task.findMany({
+      where: { userId: userId },
+      select: {
+        id: true,
+        title: true,
+        lastDate: true,
+        submitted:true,
+        submission: true,
+        description: true,
+      },
+    });
+ 
+    const currentDate = new Date();
+    
+ 
+    const processedTasks = tasks.map(task => {
+      let status = "Pending"; 
+
+      if (!task.submitted && task.lastDate < currentDate) {
+        status = "Missing";  // If no submission and the deadline has passed
+      } else if (task.submitted) {
+        status = "Submitted";  // If submission exists
+      }
+
+    
+      return {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: status,  
+        submitted: task.submitted, 
+        lastDate: task.lastDate,  
+      };
+    });
+    res.status(200).json(processedTasks);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    res.status(500).json({ error: 'An error occurred while fetching tasks info' });
+  }
+});
+
+// task section drive link submission
+router.post('/submit', async (req, res) => {
+  const { taskId, submission } = req.body; 
+  const userEmail = req.user?.email; 
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: userEmail },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updatedTask = await prisma.task.updateMany({
+      where: {
+        id: taskId, 
+        userId: user.id, 
+      },
+      data: {
+        submission: submission,
+        submitted:true 
+      },
+    });
+
+    if (updatedTask.count === 0) {
+      return res.status(404).json({ error: 'Task not found for this user' });
+    }
+
+    res.status(200).json({
+      message: 'Task submission updated successfully.',
+    });
+  } catch (error) {
+    console.error('Error updating task submission:', error);
+    res.status(500).json({ error: 'An error occurred while updating the task submission.' });
+  }
+});
+
 
 
 router.post('/update', async (req, res) => {
@@ -125,6 +243,7 @@ router.post('/update', async (req, res) => {
         res.status(500).json({ error: 'Unable to update user' });
     }
 });
+
 
 router.post('/register', async (req, res) => {
   const {

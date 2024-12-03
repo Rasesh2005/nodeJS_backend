@@ -41,8 +41,10 @@ model User {
 model Task {
   id        Int      @id @default(autoincrement())
   title     String
-  completed Boolean
+  submitted  Boolean
   lastDate  DateTime
+  submission String
+  description String
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
 }
