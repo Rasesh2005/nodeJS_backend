@@ -87,7 +87,7 @@ app.use(express.json());
 //profile userdata
 router.get('/user', async (req, res) => {
   const { email } = req.query; // Extract email from query parameters
-
+  console.log(email)
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
   }
@@ -140,7 +140,7 @@ router.get('/getLeaderboard', async (req, res) => {
 
 //tasks section data 
 router.get('/getTasks', async (req, res) => {
-  const userId = req.user?.id;  
+  const {userId} = req.query;  
 
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized: User not logged in' });
