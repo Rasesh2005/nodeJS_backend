@@ -85,11 +85,15 @@ app.use(express.json());
 
 
 //profile userdata
-router.get('/campusambassador', async(req,res)=>{
-  const userEmail = req.user?.email; 
-  try{
+router.get('/user', async (req, res) => {
+  const { email } = req.query; // Extract email from query parameters
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  try {
     const userData = await prisma.user.findUnique({
-      where: { email: userEmail }, 
+      where: { email: email }, // Find user by email
       select: {
         id: true,
         name: true,
@@ -97,18 +101,20 @@ router.get('/campusambassador', async(req,res)=>{
         collegeYear: true,
         phone: true,
         points: true,
-        tasks: true, 
+        tasks: true,
+        // Add any other fields you want to include in the response
       },
     });
-    res.status(200).json(userData);
-
-  }catch(error){
-    console.error(error);
-    res.status(500).json({ error: 'could not fetch user data' });
-
+    if (userData) {
+      return res.status(200).json(userData); // Return user data if found
+    } else {
+      return res.status(404).json({ error: 'User  not found' }); // User not found
+    }
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    res.status(500).json({ error: 'An error occurred while fetching user data' });
   }
 });
-
 
 //leaderboard top 10
 router.get('/campusambassador', async (req, res) => {
