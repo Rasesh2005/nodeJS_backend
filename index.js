@@ -117,7 +117,7 @@ router.get('/user', async (req, res) => {
 });
 
 //leaderboard top 10
-router.get('/campusambassador', async (req, res) => {
+router.get('/getLeaderboard', async (req, res) => {
   try {
     const topUsers = await prisma.user.findMany({
       orderBy: {
@@ -139,7 +139,7 @@ router.get('/campusambassador', async (req, res) => {
 
 
 //tasks section data 
-router.get('/campusambassador', async (req, res) => {
+router.get('/getTasks', async (req, res) => {
   const userId = req.user?.id;  
 
   if (!userId) {
