@@ -87,7 +87,6 @@ app.use(express.json());
 //profile userdata
 router.get('/user', async (req, res) => {
   const { email } = req.query; // Extract email from query parameters
-  console.log(email)
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
   }
@@ -148,7 +147,7 @@ router.get('/getTasks', async (req, res) => {
 
   try {
     const tasks = await prisma.task.findMany({
-      where: { userId: userId },
+      where: { userId: Number(userId) },
       select: {
         id: true,
         title: true,
@@ -190,12 +189,12 @@ router.get('/getTasks', async (req, res) => {
 
 // task section drive link submission
 router.post('/submit', async (req, res) => {
-  const { taskId, submission } = req.body; 
-  const userEmail = req.user?.email; 
+  console.log("hello")
+  const { taskId, submission,email } = req.body; 
 
   try {
     const user = await prisma.user.findUnique({
-      where: { email: userEmail },
+      where: { email: email },
     });
 
     if (!user) {
@@ -210,6 +209,7 @@ router.post('/submit', async (req, res) => {
       data: {
         submission: submission,
         submitted:true,
+        status:"submitted"
       },
     });
 
@@ -313,6 +313,135 @@ router.post('/register', async (req, res) => {
 router.get('/ping', (req, res) => {
   res.status(200).json({ message: 'Server is alive' });
 });
+
+router.post('/createTask', async (req, res) => {
+  const { title, description, lastDate,points } = req.body;
+
+  // Validate input
+  if (!title || !description || !lastDate || !points) {
+    return res.status(400).json({ error: 'Title, description, and lastDate are required' });
+  }
+
+  try {
+    const taskData = {
+      title,
+      description,
+      lastDate: new Date(lastDate), // Ensure lastDate is in Date format
+      submitted: false,
+      points,
+      submission: "",
+    };
+
+    // Use a transaction to safely create and assign the task to all users
+    await prisma.$transaction(async (prisma) => {
+      const users = await prisma.user.findMany({ select: { id: true } });
+
+      if (users.length === 0) {
+        throw new Error("No users found to assign tasks.");
+      }
+
+      // Create task for each user
+      const tasks = users.map(user => ({
+        ...taskData,
+        userId: user.id,
+      }));
+
+      await prisma.task.createMany({ data: tasks });
+    });
+
+    res.status(201).json({ message: 'Task successfully created and assigned to all users!' });
+  } catch (error) {
+    console.error('Error creating tasks:', error);
+    res.status(500).json({ error: 'An error occurred while creating tasks' });
+  }
+});
+
+router.post('/admin/tasks', async (req, res) => {
+  const { taskId, userId, points } = req.body; // Extract data from the request body
+
+  try {
+    if (taskId && userId && points) {
+      // Assign points for a specific task to a specific user
+      const updatedTask = await prisma.task.updateMany({
+        where: {
+          id: taskId,
+          userId: userId,
+        },
+        data: {
+          points: points, // Assign points to the task
+        },
+      });
+
+      const updatedUser = await prisma.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          points: {
+            increment: points, // Increment the user's points by the assigned points
+          },
+        },
+      });
+
+      if (updatedTask.count === 0) {
+        return res.status(404).json({ error: 'Task not found for the specified user' });
+      }
+
+      return res.status(200).json({
+        message: 'Points successfully assigned to the task!',
+      });
+    } else {
+      // Get all user responses with tasks and their status
+      const userResponses = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          collegeName: true,
+          points: true,
+          tasks: {
+            select: {
+              id: true,
+              title: true,
+              submission: true,
+              submitted: true,
+              points: true,
+            },
+          },
+        },
+      });
+
+      // Format responses and count completed tasks
+      const formattedResponses = userResponses.map(user => {
+        const completedTasksCount = user.tasks.filter(task => task.submitted).length;
+
+        return {
+          userId: user.id,
+          userName: user.name,
+          collegeName: user.collegeName,
+          totalPoints: user.points,
+          completedTasksCount, // Number of completed tasks
+          tasks: user.tasks.map(task => ({
+            taskId: task.id,
+            taskTitle: task.title,
+            submission: task.submission,
+            submitted: task.submitted,
+            taskPoints: task.points || 0,
+          })),
+        };
+      });
+
+      // Sort users by completed tasks count in descending order
+      formattedResponses.sort((a, b) => b.completedTasksCount - a.completedTasksCount);
+
+      return res.status(200).json(formattedResponses);
+    }
+  } catch (error) {
+    console.error('Error in admin tasks endpoint:', error);
+    res.status(500).json({ error: 'An error occurred while processing the request' });
+  }
+});
+
+
 
 // Use the defined routes
 app.use('/',router);
