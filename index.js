@@ -271,17 +271,17 @@ router.post('/register', async (req, res) => {
   } = req.body;
 
   try {
-    // Check if user already exists
+    // Check if the user already exists
     const existingUser = await prisma.user.findUnique({
-      where: {
-        email: email
-      }
+      where: { email: email },
     });
+
     if (existingUser) {
-      console.log("user found")
+      console.log("User found");
       return res.status(400).json({ error: 'You have already submitted the form', user: existingUser });
     }
 
+    // Create a new user
     const newUser = await prisma.user.create({
       data: {
         name,
@@ -299,9 +299,37 @@ router.post('/register', async (req, res) => {
         hours,
         contribution,
         motivation,
-        points: 0 // Default points to 0
-      }
+        points: 0, // Default points to 0
+      },
     });
+
+    // Fetch all existing tasks
+    const existingTasks = await prisma.task.findMany({
+      select: { 
+        title: true, 
+        description: true, 
+        lastDate: true, 
+        points: true 
+      },
+    });
+
+    // If there are tasks, assign them to the new user
+    if (existingTasks.length > 0) {
+      const userTasks = existingTasks.map(task => ({
+        title: task.title,
+        description: task.description,
+        lastDate: task.lastDate,
+        points: task.points,
+        submitted: false, // Default submitted to false
+        submission: "",   // Default empty submission
+        userId: newUser.id, // Associate with the new user's ID
+      }));
+
+      // Create tasks for the new user
+      await prisma.task.createMany({
+        data: userTasks,
+      });
+    }
 
     res.status(201).json({ message: 'User successfully registered!', user: newUser });
   } catch (error) {
@@ -309,6 +337,7 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ error: 'Unable to add user' });
   }
 });
+
 
 router.get('/ping', (req, res) => {
   res.status(200).json({ message: 'Server is alive' });
