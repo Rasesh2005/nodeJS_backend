@@ -35,7 +35,7 @@ model User {
   contribution      String
   motivation        String
   points            Int      @default(0) 
-  tasks             Task[]   
+  tasks             Task[]   @relation("UserTasks") 
 }
 
 model Task {
@@ -46,7 +46,11 @@ model Task {
   points    Int    @default(100)
   submission String
   description String
-  userId    Int
   status    String @default("pending")
-  user      User     @relation(fields: [userId], references: [id])
+  users       User[]   @relation("UserTasks")
+}
+
+model Admin {
+  id Int @id @default(autoincrement())
+  email String @unique
 }

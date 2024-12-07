@@ -15,74 +15,6 @@ dotenv.config();
 const PORT = process.env.PORT || 8000;
 app.use(express.json());
 
-// router.post('/submit',async (req, res)=>{
-  
-// });
-// router.post('/edit',async (req, res)=>{
-  
-// });
-
-
-// router.get('/', async (req, res) => {
-//   try {
-//     const email = req.session?.user?.email; 
-//     //what ever method is being used to recog the logged in ambass.change..
-    
-
-//     let responseData = {
-//       currentUser: null,
-//       topUsers: [],
-//     };
-
-    
-    // const topUsers = await prisma.user.findMany({
-    //   orderBy: {
-    //     points: 'desc', // Order by points in descending order
-    //   },
-    //   take: 3,
-    //   select: {
-    //     name: true,
-    //     points: true,
-    //   },
-    // });
-
-    
-//     if (email) {
-      // const userData = await prisma.user.findUnique({
-      //   where: { email: email }, // find user by email
-      //   select: {
-      //     id: true,
-      //     name: true,
-      //     collegeName: true,
-      //     collegeYear: true,
-      //     phone: true,
-      //     points: true,
-      //     tasks: true, 
-      //   },
-      // });
-
-     
-//       if (userData) {
-//         responseData.currentUser = userData;
-//       } else {
-//         return res.status(404).json({ error: 'User not found' });
-//       }
-//     } else {
-//       return res.status(400).json({ error: 'User email not found in session' });
-//     }
-
-//     // top three users
-//     responseData.topUsers = topUsers;
-
-//     // combined response
-    // res.status(200).json(responseData);
-//   } catch (error) {
-    // console.error(error);
-    // res.status(500).json({ error: 'An error occurred while fetching user data' });
-//   }
-// });
-
-
 
 //profile userdata
 router.get('/user', async (req, res) => {
@@ -190,9 +122,10 @@ router.get('/getTasks', async (req, res) => {
 // task section drive link submission
 router.post('/submit', async (req, res) => {
   console.log("hello")
-  const { taskId, submission,email } = req.body; 
+  const { taskId, submission, email } = req.body; 
 
   try {
+    // Step 1: Find the user by email
     const user = await prisma.user.findUnique({
       where: { email: email },
     });
@@ -201,21 +134,40 @@ router.post('/submit', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const updatedTask = await prisma.task.updateMany({
-      where: {
-        id: taskId, 
-        userId: user.id, 
-      },
-      data: {
-        submission: submission,
-        submitted:true,
-        status:"submitted"
-      },
+    // Step 2: Find the task by taskId and check if it's associated with the user
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: { users: true }  // Including the users relation to check if the user is assigned to this task
     });
 
-    if (updatedTask.count === 0) {
-      return res.status(404).json({ error: 'Task not found for this user' });
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
     }
+
+    // Step 3: Check if the user is associated with this task
+    const isUserAssigned = task.users.some(u => u.id === user.id);
+
+    if (!isUserAssigned) {
+      return res.status(400).json({ error: 'User is not assigned to this task' });
+    }
+
+    // Step 4: Update the task's submission and status for this user
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        submission: submission,
+        submitted: true,
+        status: "submitted",
+        users: {
+          update: {
+            where: { id: user.id },
+            data: {
+              // You could potentially update additional data in the junction table if needed
+            },
+          },
+        },
+      },
+    });
 
     res.status(200).json({
       message: 'Task submission updated successfully.',
@@ -225,6 +177,7 @@ router.post('/submit', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while updating the task submission.' });
   }
 });
+
 
 
 
@@ -299,39 +252,25 @@ router.post('/register', async (req, res) => {
         hours,
         contribution,
         motivation,
-        points: 0, // Default points to 0
+        points: 0, 
+        
       },
     });
 
-    // Fetch all existing tasks
-    const existingTasks = await prisma.task.findMany({
-      select: { 
-        title: true, 
-        description: true, 
-        lastDate: true, 
-        points: true 
-      },
-    });
+    const activeTasks = await prisma.task.findMany();
 
-    // If there are tasks, assign them to the new user
-    if (existingTasks.length > 0) {
-      const userTasks = existingTasks.map(task => ({
-        title: task.title,
-        description: task.description,
-        lastDate: task.lastDate,
-        points: task.points,
-        submitted: false, // Default submitted to false
-        submission: "",   // Default empty submission
-        userId: newUser.id, // Associate with the new user's ID
-      }));
-
-      // Create tasks for the new user
-      await prisma.task.createMany({
-        data: userTasks,
+    for (const task of activeTasks) {
+      await prisma.task.update({
+        where: { id: task.id },
+        data: {
+          user: {
+            connect: { id: newUser.id },
+          },
+        },
       });
     }
 
-    res.status(201).json({ message: 'User successfully registered!', user: newUser });
+    res.status(201).json({ message: 'User successfully registered and tasks assigned!', user: newUser });
   } catch (error) {
     console.error('Error adding user:', error);
     res.status(500).json({ error: 'Unable to add user' });
@@ -344,38 +283,44 @@ router.get('/ping', (req, res) => {
 });
 
 router.post('/createTask', async (req, res) => {
-  const { title, description, lastDate,points } = req.body;
+  const { title, description, lastDate, points } = req.body;
 
   // Validate input
   if (!title || !description || !lastDate || !points) {
-    return res.status(400).json({ error: 'Title, description, and lastDate are required' });
+    return res.status(400).json({ error: 'Title, description, lastDate, and points are required' });
   }
 
   try {
+    // Convert lastDate to Date format and ensure points are numbers
     const taskData = {
       title,
       description,
       lastDate: new Date(lastDate), // Ensure lastDate is in Date format
+      points: Number(points),
       submitted: false,
-      points,
-      submission: "",
+      submission:''
     };
 
-    // Use a transaction to safely create and assign the task to all users
-    await prisma.$transaction(async (prisma) => {
-      const users = await prisma.user.findMany({ select: { id: true } });
+    // Create a task
+    const task = await prisma.task.create({
+      data: taskData,
+    });
 
-      if (users.length === 0) {
-        throw new Error("No users found to assign tasks.");
-      }
+    // Get all users
+    const users = await prisma.user.findMany({ select: { id: true } });
 
-      // Create task for each user
-      const tasks = users.map(user => ({
-        ...taskData,
-        userId: user.id,
-      }));
+    if (users.length === 0) {
+      return res.status(400).json({ error: 'No users found to assign tasks.' });
+    }
 
-      await prisma.task.createMany({ data: tasks });
+    // Associate the created task with all users
+    await prisma.task.update({
+      where: { id: task.id },
+      data: {
+        users: {
+          connect: users.map(user => ({ id: user.id })), // Connect each user to the task
+        },
+      },
     });
 
     res.status(201).json({ message: 'Task successfully created and assigned to all users!' });
@@ -385,42 +330,57 @@ router.post('/createTask', async (req, res) => {
   }
 });
 
+
 router.post('/admin/tasks', async (req, res) => {
   const { taskId, userId, points } = req.body; // Extract data from the request body
 
   try {
     if (taskId && userId && points) {
-      // Assign points for a specific task to a specific user
-      const updatedTask = await prisma.task.updateMany({
+      // Step 1: Update the user-task junction table to assign points to the user-task relation
+      const updatedUserTask = await prisma.user.updateMany({
         where: {
-          id: taskId,
-          userId: userId,
+          id: userId,
+          tasks: {
+            some: {
+              id: taskId, // Ensure the user has the task
+            },
+          },
         },
         data: {
-          points: points, // Assign points to the task
+          tasks: {
+            update: {
+              where: {
+                id: taskId,
+              },
+              data: {
+                points: points, // Assign points to the task-user relationship in the junction table
+              },
+            },
+          },
         },
       });
 
+      // Step 2: Update the user's total points (if needed)
       const updatedUser = await prisma.user.update({
         where: {
           id: userId,
         },
         data: {
           points: {
-            increment: points, // Increment the user's points by the assigned points
+            increment: points, // Increment the user's total points
           },
         },
       });
 
-      if (updatedTask.count === 0) {
+      if (updatedUserTask.count === 0) {
         return res.status(404).json({ error: 'Task not found for the specified user' });
       }
 
       return res.status(200).json({
-        message: 'Points successfully assigned to the task!',
+        message: 'Points successfully assigned to the user-task relation!',
       });
     } else {
-      // Get all user responses with tasks and their status
+      // If no taskId, userId, or points provided, return all users' responses
       const userResponses = await prisma.user.findMany({
         select: {
           id: true,
@@ -469,6 +429,83 @@ router.post('/admin/tasks', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while processing the request' });
   }
 });
+
+
+// Endpoint to get earlier tasks with submission count
+router.get('/Tasks', async (req, res) => {
+  try {
+    // Fetch all tasks but ensure only unique tasks are returned
+    const tasks = await prisma.task.findMany({
+      distinct: ['id'],  // Ensures each task is returned only once based on task ID
+    });
+  console.log(tasks)
+    res.status(200).json(tasks);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    res.status(500).json({ error: 'An error occurred while fetching tasks' });
+  }
+});
+
+
+
+
+router.put('/tasks/:taskId', async (req, res) => {
+  const { taskId } = req.params;
+  const { title, description, lastDate } = req.body;
+
+  try {
+    const updatedTask = await prisma.task.update({
+      where: { id: Number(taskId) },
+      data: {
+        title,
+        description,
+        lastDate: lastDate ? new Date(lastDate) : undefined,
+      },
+    });
+
+    res.status(200).json(updatedTask);
+  } catch (error) {
+    console.error('Error updating task:', error);
+    res.status(500).json({ error: 'Unable to update task' });
+  }
+});
+
+router.delete('/tasks/:taskId', async (req, res) => {
+  const { taskId } = req.params;
+
+  try {
+    await prisma.task.delete({
+      where: { id: Number(taskId) },
+    });
+
+    res.status(200).json({ message: 'Task successfully deleted' });
+  } catch (error) {
+    console.error('Error deleting task:', error);
+    res.status(500).json({ error: 'Unable to delete task' });
+  }
+});
+
+router.post('/checkAdminEmail', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Check if an admin exists with the given email
+    const admin = await prisma.admin.findUnique({
+      where: { email: email },
+    });
+
+    // If an admin with the given email exists, return true, otherwise false
+    if (admin) {
+      return res.status(200).json({ isAdmin: true });
+    } else {
+      return res.status(200).json({ isAdmin: false });
+    }
+  } catch (error) {
+    console.error('Error checking admin email:', error);
+    res.status(500).json({ error: 'An error occurred while checking the admin email' });
+  }
+});
+
 
 
 
