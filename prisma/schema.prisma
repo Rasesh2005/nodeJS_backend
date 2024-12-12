@@ -10,47 +10,58 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      =env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
-//change the url as req.
 
+//change the url as req.
 
 //models
 
 model User {
-  id                Int      @id @default(autoincrement())
+  id                Int    @id @default(autoincrement())
   name              String
   collegeName       String
   collegeYear       String
-  program           String  
+  program           String
   phone             String
-  email             String   @unique 
-  POR               String   
+  email             String @unique
+  POR               String
   reasonToJoin      String
   roleInStudentBody String
   skills            String
   experience        String
   roleInEcell       String
-  hours             String      
+  hours             String
   contribution      String
   motivation        String
-  points            Int      @default(0) 
-  tasks             Task[]   @relation("UserTasks") 
+  points            Int    @default(0)
+  tasks             Task[] @relation("UserTasks")
 }
 
 model Task {
-  id        Int      @id @default(autoincrement())
-  title     String
-  submitted  Boolean @default(false)
-  lastDate  DateTime
-  points    Int    @default(100)
-  submission String
+  id          Int          @id @default(autoincrement())
+  title       String
+  submitted   Boolean      @default(false)
+  lastDate    DateTime
+  points      Int          @default(100)
   description String
-  status    String @default("pending")
-  users       User[]   @relation("UserTasks")
+  status      String       @default("pending")
+  users       User[]       @relation("UserTasks")
+  submissions Submission[] 
+}
+
+model Submission {
+  id         Int    @id @default(autoincrement())
+  taskId     Int 
+  userEmail  String  
+  task       Task   @relation(fields: [taskId], references: [id])
+  submission String
+  status     String @default("pending")
+
+   @@unique([userEmail, taskId])
 }
 
 model Admin {
-  id Int @id @default(autoincrement())
+  id    Int    @id @default(autoincrement())
   email String @unique
 }
