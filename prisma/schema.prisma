@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,10 +6,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-//change the url as req.
-
-//models
 
 model User {
   id                Int    @id @default(autoincrement())
@@ -36,32 +26,39 @@ model User {
   motivation        String
   points            Int    @default(0)
   tasks             Task[] @relation("UserTasks")
+  referrals         String @default("{}")
 }
 
 model Task {
   id          Int          @id @default(autoincrement())
   title       String
-  submitted   Boolean      @default(false)
   lastDate    DateTime
-  points      Int          @default(100)
   description String
+  submitted   Boolean      @default(false)
+  points      Int          @default(100)
   status      String       @default("pending")
+  submissions Submission[]
   users       User[]       @relation("UserTasks")
-  submissions Submission[] 
 }
 
 model Submission {
   id         Int    @id @default(autoincrement())
-  taskId     Int 
-  userEmail  String  
-  task       Task   @relation(fields: [taskId], references: [id])
+  taskId     Int
+  userEmail  String
   submission String
   status     String @default("pending")
+  task       Task   @relation(fields: [taskId], references: [id])
 
-   @@unique([userEmail, taskId])
+  @@unique([userEmail, taskId])
 }
 
 model Admin {
   id    Int    @id @default(autoincrement())
   email String @unique
+}
+
+model MissingEmails {
+  id        Int       @id @default(autoincrement())
+  email     String    @db.VarChar(255)
+  logged_at DateTime? @default(now()) @db.Timestamp(6)
 }

@@ -32,6 +32,7 @@ router.get('/user', async (req, res) => {
         collegeYear: true,
         phone: true,
         points: true,
+        referrals:true,
         // Add any other fields you want to include in the response
       },
     });
